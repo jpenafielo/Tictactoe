@@ -10,7 +10,7 @@
         android:id="@+id/gameTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Tic Tac Toe"
+        android:text="@string/tic_tac_toe"
         android:textSize="32sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
@@ -21,7 +21,7 @@
         android:id="@+id/gameStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Turno del jugador"
+        android:text="@string/turno_del_jugador"
         android:textSize="24sp"
         android:textColor="#FFFFFF"
         android:layout_below="@id/gameTitle"
@@ -42,7 +42,7 @@
             android:id="@+id/playerWins"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Jugador: 0"
+            android:text="@string/jugador_0"
             android:textColor="#FFFFFF"
             android:layout_marginEnd="16dp" />
 
@@ -50,7 +50,7 @@
             android:id="@+id/computerWins"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Computador: 0"
+            android:text="@string/computador_0"
             android:textColor="#FFFFFF"
             android:layout_marginEnd="16dp" />
 
@@ -58,7 +58,7 @@
             android:id="@+id/ties"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Empates: 0"
+            android:text="@string/empates_0"
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
@@ -82,7 +82,7 @@
         android:id="@+id/newGameButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Nuevo juego"
+        android:text="@string/nuevo_juego"
         android:background="#00BCD4"
         android:textColor="#FFFFFF"
         android:padding="12dp"

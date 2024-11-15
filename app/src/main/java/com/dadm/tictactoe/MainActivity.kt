@@ -15,6 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dadm.tictactoe.ui.theme.TicTacToeTheme
+import kotlinx.coroutines.delay
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,8 +32,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TicTacToeGame() {
     var board by remember { mutableStateOf(Array(3) { Array(3) { "" } }) }
-    var currentPlayer by remember { mutableStateOf("X") }
+    var currentPlayer by remember { mutableStateOf("X") } // Human is always "X"
     var winner by remember { mutableStateOf<String?>(null) }
+    var isComputerThinking by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -55,14 +58,15 @@ fun TicTacToeGame() {
                             .size(100.dp)
                             .background(Color.Gray)
                             .padding(2.dp)
-                            .clickable(enabled = board[row][col].isEmpty() && winner == null) {
-                                board = board.mapIndexed { i, currentRow ->
-                                    currentRow.mapIndexed { j, cell ->
-                                        if (i == row && j == col) currentPlayer else cell
-                                    }.toTypedArray()
-                                }.toTypedArray() // Necesario porque `board` es un array
-                                currentPlayer = if (currentPlayer == "X") "O" else "X"
+                            .clickable(
+                                enabled = board[row][col].isEmpty() && currentPlayer == "X" && winner == null && !isComputerThinking
+                            ) {
+                                makeMove(board, row, col, "X") // Player makes their move
                                 winner = checkWinner(board)
+                                if (winner == null) {
+                                    currentPlayer = "O"
+                                    isComputerThinking = true
+                                }
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -96,6 +100,36 @@ fun TicTacToeGame() {
                 }
             )
         }
+    }
+
+    // Handle computer's move with a delay
+    if (currentPlayer == "O" && winner == null && isComputerThinking) {
+        LaunchedEffect(currentPlayer) {
+            delay(1000) // 1-second delay
+            makeComputerMove(board)
+            winner = checkWinner(board)
+            currentPlayer = "X"
+            isComputerThinking = false
+        }
+    }
+}
+
+fun makeMove(board: Array<Array<String>>, row: Int, col: Int, player: String) {
+    board[row][col] = player
+}
+
+fun makeComputerMove(board: Array<Array<String>>) {
+    val emptyCells = mutableListOf<Pair<Int, Int>>()
+    for (i in 0..2) {
+        for (j in 0..2) {
+            if (board[i][j].isEmpty()) {
+                emptyCells.add(Pair(i, j))
+            }
+        }
+    }
+    if (emptyCells.isNotEmpty()) {
+        val (row, col) = emptyCells[Random.nextInt(emptyCells.size)]
+        makeMove(board, row, col, "O")
     }
 }
 

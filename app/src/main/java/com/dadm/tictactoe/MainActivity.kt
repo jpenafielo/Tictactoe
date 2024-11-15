@@ -1,5 +1,6 @@
 package com.dadm.tictactoe
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
         startNewGame(gameStatus, gameBoard)
     }
 
+    @SuppressLint("SetTextI18n")
     private fun startNewGame(
         gameStatus: TextView,
         gameBoard: GridLayout
@@ -143,6 +145,7 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
+    @SuppressLint("SetTextI18n")
     private fun updateStatus(
         gameStatus: TextView,
         winner: String?,

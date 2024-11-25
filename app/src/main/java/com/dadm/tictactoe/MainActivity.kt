@@ -8,6 +8,31 @@ import android.widget.Button
 import android.widget.GridLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -18,40 +43,87 @@ class MainActivity : ComponentActivity() {
     private var ties = 0
     private var isPlayerFirst = true // Alterna quién empieza el juego
     private var difficulty = "Harder" // Nivel de dificultad inicial
-    private lateinit var newGameButton: Button
-    private lateinit var difficutyButton: Button
-    private lateinit var quitButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val bottomMenu = findViewById<ComposeView>(R.id.bottom_menu_compose)
+        bottomMenu.setContent {
+            BottomMenu()
+        }
+
         val gameStatus = findViewById<TextView>(R.id.gameStatus)
         val gameBoard = findViewById<GridLayout>(R.id.gameBoard)
-        newGameButton = findViewById(R.id.new_game_menu)
-        difficutyButton = findViewById(R.id.difficulty_menu)
-        quitButton = findViewById(R.id.quit_menu)
         startNewGame(gameStatus, gameBoard)
-        listenerButtons()
-    }
-
-    @SuppressLint("SetTextI18n")
-    fun listenerButtons(){
-        newGameButton.setOnClickListener{
-            val gameStatus = findViewById<TextView>(R.id.gameStatus)
-            val gameBoard = findViewById<GridLayout>(R.id.gameBoard)
-            startNewGame(gameStatus, gameBoard)
-        }
-
-        difficutyButton.setOnClickListener{
-            showDifficultyDialog()
-        }
-
-        quitButton.setOnClickListener{
-            finish()
-        }
 
     }
+
+    @Composable
+    fun BottomMenu() {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(), // Asegura que ocupe toda la altura asignada
+                horizontalArrangement = Arrangement.SpaceEvenly, // Distribución uniforme
+                verticalAlignment = Alignment.CenterVertically // Centrado vertical
+            ) {
+                MenuButton("Nuevo Juego", icon = Icons.Default.Refresh) {
+                    val gameStatus = findViewById<TextView>(R.id.gameStatus)
+                    val gameBoard = findViewById<GridLayout>(R.id.gameBoard)
+                    startNewGame(gameStatus, gameBoard)
+                }
+                VerticalDivider() // Línea divisoria
+                MenuButton("Dificultad", icon = Icons.Default.Settings) {
+                    showDifficultyDialog()
+                }
+                VerticalDivider() // Línea divisoria
+                MenuButton("Salir",icon = Icons.Default.ExitToApp ) {
+                    showExitConfirmationDialog()
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun MenuButton(text: String, icon: ImageVector, onClick: () -> Unit) {
+        TextButton(onClick = onClick) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null, // Descripción del ícono
+                modifier = Modifier.size(24.dp), // Tamaño del ícono
+                tint = Color.White // Color del ícono
+            )
+            Spacer(modifier = Modifier.width(8.dp)) // Espaciado entre ícono y texto
+            Text(
+                text = text,
+                color = Color.White, // Color del texto
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+
+    private fun showExitConfirmationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Confirmación")
+            .setMessage("¿Estás seguro de que deseas salir?")
+            .setPositiveButton("Sí") { dialog, _ ->
+                dialog.dismiss() // Cierra el diálogo
+                finish() // Cierra la actividad actual
+            }
+            .setNegativeButton("No") { dialog, _ ->
+                dialog.dismiss() // Simplemente cierra el diálogo
+            }
+            .create()
+            .show()
+    }
+
 
     private fun showDifficultyDialog() {
         val difficulties = arrayOf("Easy", "Harder", "Expert")

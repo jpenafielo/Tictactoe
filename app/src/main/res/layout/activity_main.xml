@@ -77,39 +77,18 @@
 
     </GridLayout>
 
+    <FrameLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_above="@+id/bottom_menu_compose" />
 
-    <LinearLayout
-        android:id="@+id/MenuBox"
-        android:layout_width="wrap_content"
+    <!-- Menú inferior con Compose -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/bottom_menu_compose"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:orientation="horizontal"
-        android:layout_below="@+id/gameBoard"
-        android:layout_marginTop="16dp">
-
-        <Button
-            android:id="@+id/new_game_menu"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/nuevo_juego"
-            android:textColor="#000000"
-            android:layout_marginEnd="16dp" />
-
-        <Button
-            android:id="@+id/difficulty_menu"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/Dificultad"
-            android:textColor="#000000"
-            android:layout_marginEnd="16dp" />
-
-        <Button
-            android:id="@+id/quit_menu"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/salir"
-            android:textColor="#000000" />
-    </LinearLayout>
+        android:layout_alignParentBottom="true" />
 
 
 </RelativeLayout>

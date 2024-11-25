@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
                     showDifficultyDialog()
                 }
                 VerticalDivider() // Línea divisoria
-                MenuButton("Salir",icon = Icons.Default.ExitToApp ) {
+                MenuButton("Salir",icon = Icons.AutoMirrored.Filled.ExitToApp) {
                     showExitConfirmationDialog()
                 }
             }

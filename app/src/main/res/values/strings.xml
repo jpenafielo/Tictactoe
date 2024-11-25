@@ -6,4 +6,6 @@
     <string name="computador_0">Computador: 0</string>
     <string name="empates_0">Empates: 0</string>
     <string name="nuevo_juego">Nuevo juego</string>
+    <string name="Dificultad">DIFICULTAD</string>
+    <string name="salir">SALIR</string>
 </resources>

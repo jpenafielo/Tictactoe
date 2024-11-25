@@ -1,9 +1,9 @@
 package com.dadm.tictactoe
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.Gravity
-import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
 import android.widget.TextView
@@ -17,6 +17,10 @@ class MainActivity : ComponentActivity() {
     private var computerWins = 0
     private var ties = 0
     private var isPlayerFirst = true // Alterna quién empieza el juego
+    private var difficulty = "Harder" // Nivel de dificultad inicial
+    private lateinit var newGameButton: Button
+    private lateinit var difficutyButton: Button
+    private lateinit var quitButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,8 +28,46 @@ class MainActivity : ComponentActivity() {
 
         val gameStatus = findViewById<TextView>(R.id.gameStatus)
         val gameBoard = findViewById<GridLayout>(R.id.gameBoard)
-
+        newGameButton = findViewById(R.id.new_game_menu)
+        difficutyButton = findViewById(R.id.difficulty_menu)
+        quitButton = findViewById(R.id.quit_menu)
         startNewGame(gameStatus, gameBoard)
+        listenerButtons()
+    }
+
+    @SuppressLint("SetTextI18n")
+    fun listenerButtons(){
+        newGameButton.setOnClickListener{
+            val gameStatus = findViewById<TextView>(R.id.gameStatus)
+            val gameBoard = findViewById<GridLayout>(R.id.gameBoard)
+            startNewGame(gameStatus, gameBoard)
+        }
+
+        difficutyButton.setOnClickListener{
+            showDifficultyDialog()
+        }
+
+        quitButton.setOnClickListener{
+            finish()
+        }
+
+    }
+
+    private fun showDifficultyDialog() {
+        val difficulties = arrayOf("Easy", "Harder", "Expert")
+        AlertDialog.Builder(this)
+            .setTitle("Select Difficulty")
+            .setSingleChoiceItems(difficulties, difficulties.indexOf(difficulty)) { _, which ->
+                difficulty = difficulties[which] // Actualiza la dificultad
+            }
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create()
+            .show()
     }
 
     @SuppressLint("SetTextI18n")
@@ -58,7 +100,7 @@ class MainActivity : ComponentActivity() {
                                 currentPlayer = "O"
                                 gameStatus.text = "Turno del computador"
                                 lifecycleScope.launch {
-                                    delay(1000) // Delay for computer's move
+                                    delay(500) // Delay for computer's move
                                     makeComputerMove(board, gameBoard)
                                     moves++
                                     winner = checkWinner(board)
@@ -110,7 +152,12 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (emptyCells.isNotEmpty()) {
-            val (row, col) = emptyCells.random()
+            val (row, col) = when (difficulty) {
+                "Easy" -> emptyCells.random()
+                "Harder" -> strategicMove(emptyCells, board) // Implementa lógica más avanzada
+                "Expert" -> expertMove(emptyCells, board) // Implementa lógica óptima
+                else -> emptyCells.random()
+            }
             board[row][col] = "O"
             val button = gameBoard.getChildAt(row * 3 + col) as Button
             button.text = "O"
@@ -151,41 +198,124 @@ class MainActivity : ComponentActivity() {
         winner: String?,
         currentPlayer: String
     ) {
-        val newGameButton = findViewById<Button>(R.id.newGameButton)
         when (winner) {
             "X" -> {
                 playerWins++
                 gameStatus.text = "Jugador X gana!"
             }
+
             "O" -> {
                 computerWins++
                 gameStatus.text = "Computador gana!"
             }
+
             "Empate" -> {
                 ties++
                 gameStatus.text = "Es un empate!"
             }
+
             else -> {
-                gameStatus.text = if (currentPlayer == "X") "Turno del jugador" else "Turno del computador"
+                gameStatus.text =
+                    if (currentPlayer == "X") "Turno del jugador" else "Turno del computador"
             }
         }
 
         if (winner != null) {
-            newGameButton.visibility = View.VISIBLE
-            newGameButton.setOnClickListener {
-                newGameButton.visibility = View.GONE
-                val playerWinsView = findViewById<TextView>(R.id.playerWins)
-                val computerWinsView = findViewById<TextView>(R.id.computerWins)
-                val tiesView = findViewById<TextView>(R.id.ties)
-                val gameBoard = findViewById<GridLayout>(R.id.gameBoard)
+            val playerWinsView = findViewById<TextView>(R.id.playerWins)
+            val computerWinsView = findViewById<TextView>(R.id.computerWins)
+            val tiesView = findViewById<TextView>(R.id.ties)
 
-                playerWinsView.text = "Jugador: $playerWins"
-                computerWinsView.text = "Computador: $computerWins"
-                tiesView.text = "Empates: $ties"
+            playerWinsView.text = "Jugador: $playerWins"
+            computerWinsView.text = "Computador: $computerWins"
+            tiesView.text = "Empates: $ties"
 
-                isPlayerFirst = !isPlayerFirst // Alternar quién inicia
-                startNewGame(gameStatus, gameBoard)
-            }
+            isPlayerFirst = !isPlayerFirst // Alternar quién inicia
         }
     }
+
+    private fun strategicMove(
+        emptyCells: List<Pair<Int, Int>>,
+        board: Array<Array<String>>
+    ): Pair<Int, Int> {
+        // 1. Intentar ganar
+        for (cell in emptyCells) {
+            val (row, col) = cell
+            board[row][col] = "O"
+            if (checkWinner(board) == "O") {
+                board[row][col] = "" // Reset the move
+                return cell
+            }
+            board[row][col] = "" // Reset the move
+        }
+
+        // 2. Bloquear al jugador
+        for (cell in emptyCells) {
+            val (row, col) = cell
+            board[row][col] = "X"
+            if (checkWinner(board) == "X") {
+                board[row][col] = "" // Reset the move
+                return cell
+            }
+            board[row][col] = "" // Reset the move
+        }
+
+        // 3. Elegir al azar si no hay necesidad de ganar o bloquear
+        return emptyCells.random()
+    }
+
+    private fun expertMove(emptyCells: List<Pair<Int, Int>>, board: Array<Array<String>>): Pair<Int, Int> {
+        var bestScore = Int.MIN_VALUE
+        var bestMove: Pair<Int, Int> = emptyCells.first()
+
+        for (cell in emptyCells) {
+            val (row, col) = cell
+            board[row][col] = "O"
+            val score = minimax(board, depth = 0, isMaximizing = false)
+            board[row][col] = "" // Reset the move
+
+            if (score > bestScore) {
+                bestScore = score
+                bestMove = cell
+            }
+        }
+        return bestMove
+    }
+
+    // Implementación del algoritmo MiniMax
+    private fun minimax(board: Array<Array<String>>, depth: Int, isMaximizing: Boolean): Int {
+        val winner = checkWinner(board)
+        if (winner == "O") return 10 - depth // Maximizar la computadora
+        if (winner == "X") return depth - 10 // Minimizar el jugador
+        if (board.all { row -> row.all { it.isNotEmpty() } }) return 0 // Empate
+
+        if (isMaximizing) {
+            var bestScore = Int.MIN_VALUE
+            for (i in 0..2) {
+                for (j in 0..2) {
+                    if (board[i][j].isEmpty()) {
+                        board[i][j] = "O"
+                        val score = minimax(board, depth + 1, isMaximizing = false)
+                        board[i][j] = "" // Reset the move
+                        bestScore = maxOf(bestScore, score)
+                    }
+                }
+            }
+            return bestScore
+        } else {
+            var bestScore = Int.MAX_VALUE
+            for (i in 0..2) {
+                for (j in 0..2) {
+                    if (board[i][j].isEmpty()) {
+                        board[i][j] = "X"
+                        val score = minimax(board, depth + 1, isMaximizing = true)
+                        board[i][j] = "" // Reset the move
+                        bestScore = minOf(bestScore, score)
+                    }
+                }
+            }
+            return bestScore
+        }
+    }
+
+
 }

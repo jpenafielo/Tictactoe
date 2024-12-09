@@ -2,10 +2,10 @@ package com.dadm.tictactoe
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
+import android.media.MediaPlayer
 import android.os.Bundle
-import android.view.Gravity
-import android.widget.Button
 import android.widget.GridLayout
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import com.google.gson.Gson
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -41,12 +42,17 @@ class MainActivity : ComponentActivity() {
     private var playerWins = 0
     private var computerWins = 0
     private var ties = 0
-    private var isPlayerFirst = true // Alterna quién empieza el juego
-    private var difficulty = "Harder" // Nivel de dificultad inicial
+    private var isPlayerFirst = true
+    private var difficulty = "Harder"
+    private lateinit var moveSound: MediaPlayer
+    private val board = Array(3) { Array(3) { "" } }
+    private var currentPlayer = "X"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        moveSound = MediaPlayer.create(this, R.raw.move_sound)
 
         val bottomMenu = findViewById<ComposeView>(R.id.bottom_menu_compose)
         bottomMenu.setContent {
@@ -55,8 +61,120 @@ class MainActivity : ComponentActivity() {
 
         val gameStatus = findViewById<TextView>(R.id.gameStatus)
         val gameBoard = findViewById<GridLayout>(R.id.gameBoard)
-        startNewGame(gameStatus, gameBoard)
 
+        loadStatistics() // Cargar estadísticas al inicio
+
+        if (savedInstanceState != null) {
+            restoreGameState(savedInstanceState, gameStatus, gameBoard)
+        } else {
+            startNewGame(gameStatus, gameBoard)
+        }
+    }
+
+
+    override fun onDestroy() {
+        super.onDestroy()
+        moveSound.release()
+        saveGameState()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val gson = Gson()
+        val boardJson = gson.toJson(board)
+        outState.putString("boardJson", boardJson)
+        outState.putString("currentPlayer", currentPlayer)
+        outState.putInt("playerWins", playerWins)
+        outState.putInt("computerWins", computerWins)
+        outState.putInt("ties", ties)
+        outState.putString("gameStatusText", findViewById<TextView>(R.id.gameStatus).text.toString())
+        outState.putBoolean("isComputerTurn", currentPlayer == "O") // Guardar si es turno del computador
+        outState.putString("difficulty", difficulty) // Guardar dificultad
+    }
+
+
+    @SuppressLint("SetTextI18n")
+    private fun restoreGameState(
+        savedInstanceState: Bundle,
+        gameStatus: TextView,
+        gameBoard: GridLayout
+    ) {
+
+        val gson = Gson()
+
+        // Restaura el tablero desde JSON
+        val boardJson = savedInstanceState.getString("boardJson", "")
+        val restoredBoard = gson.fromJson(boardJson, Array<Array<String>>::class.java)
+        for (i in 0..2) {
+            for (j in 0..2) {
+                board[i][j] = restoredBoard[i][j]
+            }
+        }
+        currentPlayer = savedInstanceState.getString("currentPlayer", "X")
+        playerWins = savedInstanceState.getInt("playerWins", 0)
+        computerWins = savedInstanceState.getInt("computerWins", 0)
+        ties = savedInstanceState.getInt("ties", 0)
+        difficulty = savedInstanceState.getString("difficulty", "Harder") // Restaurar dificultad
+
+        val restoredStatusText = savedInstanceState.getString("gameStatusText", "")
+        gameStatus.text = restoredStatusText
+
+        gameBoard.removeAllViews()
+        for (i in 0..2) {
+            for (j in 0..2) {
+                val imageView = ImageView(this).apply {
+                    setBackgroundColor(0xFF888888.toInt())
+                    when (board[i][j]) {
+                        "X" -> setImageResource(R.drawable.x_image)
+                        "O" -> setImageResource(R.drawable.o_image)
+                    }
+                    setOnClickListener {
+                        if (board[i][j].isEmpty() && currentPlayer == "X") {
+                            board[i][j] = "X"
+                            setImageResource(R.drawable.x_image)
+                            moveSound.start()
+                            handlePlayerMove(gameStatus, gameBoard)
+                        }
+                    }
+                }
+                gameBoard.addView(imageView, GridLayout.LayoutParams().apply {
+                    width = 200
+                    height = 200
+                    rowSpec = GridLayout.spec(i)
+                    columnSpec = GridLayout.spec(j)
+                    setMargins(4, 4, 4, 4)
+                })
+            }
+        }
+
+        val isComputerTurn = savedInstanceState.getBoolean("isComputerTurn", false)
+
+        if (isComputerTurn) {
+            lifecycleScope.launch {
+                delay(1000)
+                makeComputerMove(board, gameBoard)
+                val winner = checkWinner(board)
+                if (winner == null) {
+                    currentPlayer = "X"
+                    gameStatus.text = "Turno del jugador"
+                } else {
+                    updateStatus(gameStatus, winner, currentPlayer)
+                }
+            }
+        }
+    }
+
+
+
+
+    private fun saveGameState() {
+        val sharedPreferences = getSharedPreferences("TicTacToePrefs", MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putInt("playerWins", playerWins)
+            putInt("computerWins", computerWins)
+            putInt("ties", ties)
+            apply()
+        }
     }
 
     @Composable
@@ -130,7 +248,7 @@ class MainActivity : ComponentActivity() {
         AlertDialog.Builder(this)
             .setTitle("Select Difficulty")
             .setSingleChoiceItems(difficulties, difficulties.indexOf(difficulty)) { _, which ->
-                difficulty = difficulties[which] // Actualiza la dificultad
+                difficulty = difficulties[which] // Actualiza la dificultad seleccionada
             }
             .setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
@@ -145,51 +263,49 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetTextI18n")
     private fun startNewGame(
         gameStatus: TextView,
-        gameBoard: GridLayout
+        gameBoard: GridLayout,
+        restore: Boolean = false
     ) {
-        val board = Array(3) { Array(3) { "" } }
-        var currentPlayer = if (isPlayerFirst) "X" else "O"
-        var winner: String? = null
-        var moves = 0
+        if (!restore) {
+            for (i in 0..2) {
+                for (j in 0..2) {
+                    board[i][j] = ""
+                }
+            }
+            currentPlayer = if (isPlayerFirst) "X" else "O"
+            gameStatus.text = if (currentPlayer == "X") "Turno del jugador" else "Turno del computador"
+        }
 
-        gameStatus.text = if (currentPlayer == "X") "Turno del jugador" else "Turno del computador"
+        // Actualizar estadísticas en la interfaz
+        val playerWinsView = findViewById<TextView>(R.id.playerWins)
+        val computerWinsView = findViewById<TextView>(R.id.computerWins)
+        val tiesView = findViewById<TextView>(R.id.ties)
 
-        // Clear and initialize the board
+        playerWinsView.text = "Jugador: $playerWins"
+        computerWinsView.text = "Computador: $computerWins"
+        tiesView.text = "Empates: $ties"
+
         gameBoard.removeAllViews()
+
+        // Crear el tablero visual
         for (i in 0..2) {
             for (j in 0..2) {
-                val button = Button(this).apply {
-                    textSize = 32f
-                    gravity = Gravity.CENTER
+                val imageView = ImageView(this).apply {
                     setBackgroundColor(0xFF888888.toInt())
+                    when (board[i][j]) {
+                        "X" -> setImageResource(R.drawable.x_image)
+                        "O" -> setImageResource(R.drawable.o_image)
+                    }
                     setOnClickListener {
-                        if (board[i][j].isEmpty() && currentPlayer == "X" && winner == null) {
+                        if (board[i][j].isEmpty() && currentPlayer == "X") {
                             board[i][j] = "X"
-                            text = "X"
-                            moves++
-                            winner = checkWinner(board)
-                            if (winner == null) {
-                                currentPlayer = "O"
-                                gameStatus.text = "Turno del computador"
-                                lifecycleScope.launch {
-                                    delay(500) // Delay for computer's move
-                                    makeComputerMove(board, gameBoard)
-                                    moves++
-                                    winner = checkWinner(board)
-                                    if (winner == null) {
-                                        currentPlayer = "X"
-                                        gameStatus.text = "Turno del jugador"
-                                    } else {
-                                        updateStatus(gameStatus, winner, currentPlayer)
-                                    }
-                                }
-                            } else {
-                                updateStatus(gameStatus, winner, currentPlayer)
-                            }
+                            setImageResource(R.drawable.x_image)
+                            moveSound.start()
+                            handlePlayerMove(gameStatus, gameBoard)
                         }
                     }
                 }
-                gameBoard.addView(button, GridLayout.LayoutParams().apply {
+                gameBoard.addView(imageView, GridLayout.LayoutParams().apply {
                     width = 200
                     height = 200
                     rowSpec = GridLayout.spec(i)
@@ -199,22 +315,99 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Computer goes first if needed
-        if (!isPlayerFirst && winner == null) {
-            lifecycleScope.launch {
-                delay(1000) // Delay for computer's first move
-                makeComputerMove(board, gameBoard)
-                moves++
-                winner = checkWinner(board)
-                if (winner == null) {
-                    currentPlayer = "X"
-                    gameStatus.text = "Turno del jugador"
-                } else {
-                    updateStatus(gameStatus, winner, currentPlayer)
-                }
-            }
+        if (!isPlayerFirst && !restore) {
+            handleComputerMove(gameStatus, gameBoard)
         }
     }
+
+
+    @SuppressLint("SetTextI18n")
+    private fun handlePlayerMove(gameStatus: TextView, gameBoard: GridLayout) {
+        val winner = checkWinner(board)
+        if (winner == null) {
+            currentPlayer = "O"
+            gameStatus.text = "Turno del computador"
+            lifecycleScope.launch {
+                delay(1000)
+                handleComputerMove(gameStatus, gameBoard)
+            }
+        } else {
+            updateStatus(gameStatus, winner)
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun handleComputerMove(gameStatus: TextView, gameBoard: GridLayout) {
+        makeComputerMove(board, gameBoard)
+        val winner = checkWinner(board)
+        if (winner == null) {
+            currentPlayer = "X"
+            gameStatus.text = "Turno del jugador"
+        } else {
+            updateStatus(gameStatus, winner)
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun updateStatus(gameStatus: TextView, winner: String?) {
+        when (winner) {
+            "X" -> {
+                playerWins++
+                saveStatistics() // Guardar estadísticas al ganar
+                gameStatus.text = "Jugador X gana!"
+            }
+            "O" -> {
+                computerWins++
+                saveStatistics() // Guardar estadísticas al ganar
+                gameStatus.text = "Computador gana!"
+            }
+            "Empate" -> {
+                ties++
+                saveStatistics() // Guardar estadísticas en empate
+                gameStatus.text = "Es un empate!"
+            }
+        }
+
+        // Actualizar la interfaz con las estadísticas
+        val playerWinsView = findViewById<TextView>(R.id.playerWins)
+        val computerWinsView = findViewById<TextView>(R.id.computerWins)
+        val tiesView = findViewById<TextView>(R.id.ties)
+
+        playerWinsView.text = "Jugador: $playerWins"
+        computerWinsView.text = "Computador: $computerWins"
+        tiesView.text = "Empates: $ties"
+
+        // Alternar quién inicia la siguiente partida
+        isPlayerFirst = !isPlayerFirst
+    }
+
+    private fun saveStatistics() {
+        val sharedPreferences = getSharedPreferences("TicTacToePrefs", MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putInt("playerWins", playerWins)
+            putInt("computerWins", computerWins)
+            putInt("ties", ties)
+            apply()
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun loadStatistics() {
+        val sharedPreferences = getSharedPreferences("TicTacToePrefs", MODE_PRIVATE)
+        playerWins = sharedPreferences.getInt("playerWins", 0)
+        computerWins = sharedPreferences.getInt("computerWins", 0)
+        ties = sharedPreferences.getInt("ties", 0)
+
+        // Actualizar las estadísticas en la interfaz
+        val playerWinsView = findViewById<TextView>(R.id.playerWins)
+        val computerWinsView = findViewById<TextView>(R.id.computerWins)
+        val tiesView = findViewById<TextView>(R.id.ties)
+
+        playerWinsView.text = "Jugador: $playerWins"
+        computerWinsView.text = "Computador: $computerWins"
+        tiesView.text = "Empates: $ties"
+    }
+
 
     private fun makeComputerMove(board: Array<Array<String>>, gameBoard: GridLayout) {
         val emptyCells = mutableListOf<Pair<Int, Int>>()
@@ -226,13 +419,14 @@ class MainActivity : ComponentActivity() {
         if (emptyCells.isNotEmpty()) {
             val (row, col) = when (difficulty) {
                 "Easy" -> emptyCells.random()
-                "Harder" -> strategicMove(emptyCells, board) // Implementa lógica más avanzada
-                "Expert" -> expertMove(emptyCells, board) // Implementa lógica óptima
+                "Harder" -> strategicMove(emptyCells, board)
+                "Expert" -> expertMove(emptyCells, board)
                 else -> emptyCells.random()
             }
             board[row][col] = "O"
-            val button = gameBoard.getChildAt(row * 3 + col) as Button
-            button.text = "O"
+            val imageView = gameBoard.getChildAt(row * 3 + col) as ImageView
+            imageView.setImageResource(R.drawable.o_image) // Imagen para la "O"
+            moveSound.start() // Reproducir sonido al clic del computador
         }
     }
 
@@ -388,6 +582,7 @@ class MainActivity : ComponentActivity() {
             return bestScore
         }
     }
+
 
 
 }

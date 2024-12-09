@@ -14,7 +14,23 @@
         android:textSize="32sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
+        android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true" />
+
+    <!-- Game Board -->
+    <GridLayout
+        android:id="@+id/gameBoard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/gameTitle"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:columnCount="3"
+        android:rowCount="3">
+
+        <!-- Las celdas del tablero se agregarán programáticamente -->
+
+    </GridLayout>
 
     <!-- Game Status -->
     <TextView
@@ -24,8 +40,8 @@
         android:text="@string/turno_del_jugador"
         android:textSize="24sp"
         android:textColor="#FFFFFF"
-        android:layout_below="@id/gameTitle"
-        android:layout_centerHorizontal="true"
+        android:layout_toEndOf="@id/gameBoard"
+        android:layout_marginStart="32dp"
         android:layout_marginTop="16dp" />
 
     <!-- Statistics -->
@@ -33,9 +49,10 @@
         android:id="@+id/statisticsLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:layout_below="@id/gameStatus"
-        android:layout_centerHorizontal="true"
-        android:orientation="horizontal"
+        android:layout_toEndOf="@id/gameBoard"
+        android:layout_marginStart="32dp"
         android:layout_marginTop="16dp">
 
         <TextView
@@ -43,16 +60,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/jugador_0"
-            android:textColor="#FFFFFF"
-            android:layout_marginEnd="16dp" />
+            android:textColor="#FFFFFF" />
 
         <TextView
             android:id="@+id/computerWins"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/computador_0"
-            android:textColor="#FFFFFF"
-            android:layout_marginEnd="16dp" />
+            android:textColor="#FFFFFF" />
 
         <TextView
             android:id="@+id/ties"
@@ -62,35 +77,10 @@
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
-    <!-- Game Board -->
-    <GridLayout
-        android:id="@+id/gameBoard"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/statisticsLayout"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="32dp"
-        android:columnCount="3"
-        android:rowCount="3">
-
-        <!-- Individual cells will be added programmatically -->
-
-    </GridLayout>
-
-    <FrameLayout
-        android:id="@+id/container"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_above="@+id/bottom_menu_compose" />
-
     <!-- Menú inferior con Compose -->
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/bottom_menu_compose"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true" />
-
-
-
-
 </RelativeLayout>
